@@ -107,10 +107,10 @@ python app.py
 
 | Feature | Basic | Advanced | Tại sao quan trọng? |
 |---------|-------|----------|---------------------|
-| Config | Hardcode | Env vars | ... |
-| Health check |  |  | ... |
-| Logging | print() | JSON | ... |
-| Shutdown | Đột ngột | Graceful | ... |
+| Config | Hardcode | Env vars | Tránh lộ thông tin (API key, password..), Mỗi môi trường cần config khác nhau, dễ dàng thay đổi |
+| Health check | Không có | Có | Kiểm tra service còn sống không |
+| Logging | print() | JSON | Unify format, lưu log theo 1 structure để tool minitor truy xuất (kibana) |
+| Shutdown | Đột ngột | Graceful | Các request không bị ngắt đột ngột làm lost data, lỗi luồng, khó khăn cho việc BAU sau này (xử lý lại request lỗi) |
 
 ###  Checkpoint 1
 
@@ -144,9 +144,14 @@ cd ../../02-docker/develop
 **Nhiệm vụ:** Đọc `Dockerfile` và trả lời:
 
 1. Base image là gì?
+- Môi trường base cơ bản, thường là bản slim hoặc alpine
 2. Working directory là gì?
+- Là root directory của ứng dụng
 3. Tại sao COPY requirements.txt trước?
+- Để cache lại file đấy sau khi build lần đầu
+- Cần để trước layer pip install
 4. CMD vs ENTRYPOINT khác nhau thế nào?
+- CMD có thể bị ghi đề, ENTRYPOINT chỉ có thể nối thêm tham số
 
 ###  Exercise 2.2: Build và run
 
@@ -181,7 +186,7 @@ cd ../production
 
 Build và so sánh:
 ```bash
-docker build -t my-agent:advanced .
+docker build -f 02-docker/production/Dockerfile -t my-agent:advanced .
 docker images | grep my-agent
 ```
 
