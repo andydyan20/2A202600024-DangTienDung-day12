@@ -21,6 +21,7 @@ Simulate shutdown:
 import os
 import time
 import signal
+import sys
 import logging
 from datetime import datetime, timezone
 from contextlib import asynccontextmanager

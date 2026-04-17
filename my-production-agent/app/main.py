@@ -83,7 +83,7 @@ def check_and_record_cost(input_tokens: int, output_tokens: int):
         _daily_cost = 0.0
         _cost_reset_day = today
     if _daily_cost >= settings.daily_budget_usd:
-        raise HTTPException(503, "Daily budget exhausted. Try tomorrow.")
+        raise HTTPException(409, "Daily budget exhausted. Try tomorrow.")
     cost = (input_tokens / 1000) * 0.00015 + (output_tokens / 1000) * 0.0006
     _daily_cost += cost
 

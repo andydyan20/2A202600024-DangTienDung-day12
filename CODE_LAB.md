@@ -114,10 +114,10 @@ python app.py
 
 ###  Checkpoint 1
 
-- [ ] Hiểu tại sao hardcode secrets là nguy hiểm
-- [ ] Biết cách dùng environment variables
-- [ ] Hiểu vai trò của health check endpoint
-- [ ] Biết graceful shutdown là gì
+- [X] Hiểu tại sao hardcode secrets là nguy hiểm
+- [X] Biết cách dùng environment variables
+- [X] Hiểu vai trò của health check endpoint
+- [X] Biết graceful shutdown là gì
 
 ---
 
@@ -172,6 +172,7 @@ curl http://localhost:8000/ask -X POST \
 ```bash
 docker images my-agent:develop
 ```
+image size: 1.67GB
 
 ###  Exercise 2.3: Multi-stage build
 
@@ -180,9 +181,12 @@ cd ../production
 ```
 
 **Nhiệm vụ:** Đọc `Dockerfile` và tìm:
-- Stage 1 làm gì?
+- Stage 1 làm gì?   
+-> Cài đặt tất cả dependencies
 - Stage 2 làm gì?
+-> Chỉ copy những cái để chạy, không cần để build
 - Tại sao image nhỏ hơn?
+-> image size: 262MB, nhỏ hơn do dùng bản slim và chỉ cài dependencies đủ dùng.
 
 Build và so sánh:
 ```bash
@@ -200,6 +204,19 @@ docker compose up
 
 Services nào được start? Chúng communicate thế nào?
 
+- qdrant, redis start trước.
+- Đến agent start.
+- Đến nginx start.
+
+nginx --depend-on--> agent --depend-on --> redis
+                        |
+                    depend-on
+                        |
+                    qdrant
+communicate bởi:
+    networks:
+      - internal
+
 Test:
 ```bash
 # Health check
@@ -213,10 +230,10 @@ curl http://localhost/ask -X POST \
 
 ###  Checkpoint 2
 
-- [ ] Hiểu cấu trúc Dockerfile
-- [ ] Biết lợi ích của multi-stage builds
-- [ ] Hiểu Docker Compose orchestration
-- [ ] Biết cách debug container (`docker logs`, `docker exec`)
+- [X] Hiểu cấu trúc Dockerfile
+- [X] Biết lợi ích của multi-stage builds
+- [X] Hiểu Docker Compose orchestration
+- [X] Biết cách debug container (`docker logs`, `docker exec`)
 
 ---
 
@@ -276,6 +293,7 @@ railway domain
 ```
 
 **Nhiệm vụ:** Test public URL với curl hoặc Postman.
+https://pacific-communication-production-db01.up.railway.app/docs
 
 Test:
 ```bash
@@ -304,7 +322,16 @@ cd ../render
 6. Set environment variables trong dashboard
 7. Deploy!
 
+https://ai-agent-rfhc.onrender.com/docs
+
 **Nhiệm vụ:** So sánh `render.yaml` với `railway.toml`. Khác nhau gì?
+
+
+| Đặc điểm | render.yaml (Blueprint) | railway.toml |
+| Định dạng | file	YAML (Cấu trúc phân cấp, nghiêm ngặt về thụt đầu dòng). |	TOML (Dễ đọc, trực quan, giống file .ini hoặc cấu trúc của Rust). |
+| Phạm vi quản lý | Toàn bộ dự án (Nhiều service, Database, Redis, Cron Jobs trong một file duy nhất). | Từng Service riêng lẻ (Thường chỉ định nghĩa cách chạy cho một service cụ thể). |
+|Tính linh hoạt |	Rất cao cho việc dựng lại cả một hệ thống phức tạp từ đầu. |	Tập trung vào việc tối ưu cấu hình chạy (Build/Start) cho một microservice. |
+| Cơ chế triển khai |	Bạn kết nối Repo và Render tự động tìm file này để dựng hạ tầng. |	Bạn có thể dùng CLI hoặc Dashboard; file này giúp ghi đè các cấu hình mặc định. |
 
 ###  Exercise 3.3: (Optional) GCP Cloud Run (15 phút)
 
@@ -318,10 +345,10 @@ cd ../production-cloud-run
 
 ###  Checkpoint 3
 
-- [ ] Deploy thành công lên ít nhất 1 platform
-- [ ] Có public URL hoạt động
-- [ ] Hiểu cách set environment variables trên cloud
-- [ ] Biết cách xem logs
+- [X] Deploy thành công lên ít nhất 1 platform
+- [X] Có public URL hoạt động
+- [X] Hiểu cách set environment variables trên cloud
+- [X] Biết cách xem logs
 
 ---
 
@@ -373,9 +400,9 @@ cd ../production
 1. Đọc `auth.py` — hiểu JWT flow
 2. Lấy token:
 ```bash
-python app.py
+`python app.py`
 
-curl http://localhost:8000/token -X POST \
+curl http://localhost:8000/auth/token -X POST \
   -H "Content-Type: application/json" \
   -d '{"username": "admin", "password": "secret"}'
 ```
@@ -393,15 +420,22 @@ curl http://localhost:8000/ask -X POST \
 
 **Nhiệm vụ:** Đọc `rate_limiter.py` và trả lời:
 - Algorithm nào được dùng? (Token bucket? Sliding window?)
+-> Là Sliding Window Counter
 - Limit là bao nhiêu requests/minute?
+-> rate_limiter_user: Giới hạn 10 requests/minute. rate_limiter_admin: Giới hạn 100 requests/minute.
 - Làm sao bypass limit cho admin?
+Trong app bỏ qua bộ đếm:
+```python
+if role != "admin":
+    rate_info = limiter.check(username)
+```
 
 Test:
 ```bash
 # Gọi liên tục 20 lần
 for i in {1..20}; do
   curl http://localhost:8000/ask -X POST \
-    -H "Authorization: Bearer $TOKEN" \
+    -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJzdHVkZW50Iiwicm9sZSI6InVzZXIiLCJpYXQiOjE3NzY0MjAxNDksImV4cCI6MTc3NjQyMzc0OX0.jbHVUtgPDMnGNbX2gor89jQoet4TOBHqhjhZ0HFxw6s" \
     -H "Content-Type: application/json" \
     -d '{"question": "Test '$i'"}'
   echo ""
@@ -409,6 +443,7 @@ done
 ```
 
 Quan sát response khi hit limit.
+{"detail":{"error":"Rate limit exceeded","limit":10,"window_seconds":60,"retry_after_seconds":59}}
 
 ###  Exercise 4.4: Cost guard
 
@@ -454,10 +489,10 @@ def check_budget(user_id: str, estimated_cost: float) -> bool:
 
 ###  Checkpoint 4
 
-- [ ] Implement API key authentication
-- [ ] Hiểu JWT flow
-- [ ] Implement rate limiting
-- [ ] Implement cost guard với Redis
+- [X] Implement API key authentication
+- [X] Hiểu JWT flow
+- [X] Implement rate limiting
+- [X] Implement cost guard với Redis
 
 ---
 
@@ -556,6 +591,18 @@ kill -TERM $PID
 
 # Quan sát: Request có hoàn thành không?
 ```
+Log Graceful shutdown:
+
+INFO:     127.0.0.1:56055 - "POST /ask HTTP/1.1" 422 Unprocessable Entity
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+2026-04-17 17:23:24,845 INFO 🔄 Graceful shutdown initiated...
+2026-04-17 17:23:24,845 INFO ✅ Shutdown complete
+INFO:     Application shutdown complete.
+INFO:     Finished server process [55857]
+2026-04-17 17:23:24,845 INFO Received signal 15 — uvicorn will handle graceful shutdown
+
+[1]  + 55857 done       python app.py
 
 ###  Exercise 5.3: Stateless design
 
@@ -626,11 +673,11 @@ Script này:
 
 ###  Checkpoint 5
 
-- [ ] Implement health và readiness checks
-- [ ] Implement graceful shutdown
-- [ ] Refactor code thành stateless
-- [ ] Hiểu load balancing với Nginx
-- [ ] Test stateless design
+- [X] Implement health và readiness checks
+- [X] Implement graceful shutdown
+- [X] Refactor code thành stateless
+- [X] Hiểu load balancing với Nginx
+- [X] Test stateless design
 
 ---
 
@@ -643,23 +690,23 @@ Build một production-ready AI agent từ đầu, kết hợp TẤT CẢ concep
 ###  Requirements
 
 **Functional:**
-- [ ] Agent trả lời câu hỏi qua REST API
-- [ ] Support conversation history
-- [ ] Streaming responses (optional)
+- [X] Agent trả lời câu hỏi qua REST API
+- [X] Support conversation history
+- [X] Streaming responses (optional)
 
 **Non-functional:**
-- [ ] Dockerized với multi-stage build
-- [ ] Config từ environment variables
-- [ ] API key authentication
-- [ ] Rate limiting (10 req/min per user)
-- [ ] Cost guard ($10/month per user)
-- [ ] Health check endpoint
-- [ ] Readiness check endpoint
-- [ ] Graceful shutdown
-- [ ] Stateless design (state trong Redis)
-- [ ] Structured JSON logging
-- [ ] Deploy lên Railway hoặc Render
-- [ ] Public URL hoạt động
+- [X] Dockerized với multi-stage build
+- [X] Config từ environment variables
+- [X] API key authentication
+- [X] Rate limiting (10 req/min per user)
+- [X] Cost guard ($10/month per user)
+- [X] Health check endpoint
+- [X] Readiness check endpoint
+- [X] Graceful shutdown
+- [X] Stateless design (state trong Redis)
+- [X] Structured JSON logging
+- [X] Deploy lên Railway hoặc Render
+- [X] Public URL hoạt động
 
 ### 🏗 Architecture
 
